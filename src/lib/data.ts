@@ -1,13 +1,36 @@
 import { Redis } from '@upstash/redis'
 
-let _r: Redis | null = null
-function getRedis(): Redis {
-  if (!_r) _r = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: process.env.UPSTASH_REDIS_REST_TOKEN! })
-  return _r
+// ─── Safe Redis — never throws on bad/missing env vars ────────────────────────
+let _redis: Redis | null = null
+function getRedis(): Redis | null {
+  if (_redis) return _redis
+  const url = process.env.UPSTASH_REDIS_REST_URL ?? ''
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? ''
+  if (!url.startsWith('https://') || !token) return null
+  try {
+    _redis = new Redis({ url, token })
+    return _redis
+  } catch { return null }
 }
 
-const AV = 'https://www.alphavantage.co/query'
-const KEY = () => process.env.ALPHA_VANTAGE_API_KEY ?? ''
+async function cacheGet(key: string): Promise<string | null> {
+  try {
+    const r = getRedis()
+    if (!r) return null
+    const v = await r.get<string>(key)
+    return v ?? null
+  } catch { return null }
+}
+
+async function cacheSet(key: string, ttl: number, val: string): Promise<void> {
+  try {
+    const r = getRedis()
+    if (!r) return
+    await r.setex(key, ttl, val)
+  } catch { /* silent */ }
+}
+
+// ─── Universe definitions ─────────────────────────────────────────────────────
 
 const UNIVERSE: Record<string, string> = {
   'RELIANCE.NS':'Energy','TCS.NS':'IT','HDFCBANK.NS':'Financials',
@@ -82,13 +105,16 @@ const PRICES: Record<string, number> = {
   'ASIANPAINT.NS':2680,'ULTRACEMCO.NS':11200,'ONGC.NS':268,'LTIM.NS':5400,
   'PIDILITIND.NS':2850,'HAVELLS.NS':1640,'TRENT.NS':5800,'SIEMENS.NS':7200,
   'ABB.NS':8400,'POLYCAB.NS':7100,'ALKEM.NS':5400,'TORNTPHARM.NS':3200,
+  'BAJAJ-AUTO.NS':8900,'GODREJCP.NS':1240,'MARICO.NS':620,'VOLTAS.NS':1580,
+  'MUTHOOTFIN.NS':1980,'CHOLAFIN.NS':1380,'NAUKRI.NS':7800,'360ONE.NS':980,
 }
+
+// ─── Deterministic simulation — 500 candles, never throws ────────────────────
 
 export interface OHLCV {
   open: number; high: number; low: number; close: number; volume: number; time: number
 }
 
-// Seeded simulation — deterministic, realistic candles, never throws
 function sim(ticker: string): OHLCV[] {
   const base = PRICES[ticker] ?? 1000
   const seed = ticker.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -97,7 +123,8 @@ function sim(ticker: string): OHLCV[] {
   let price = base * (0.85 + rng(1) * 0.12)
   let d = 0
   for (let i = 499; i >= 0; i--) {
-    const dt = new Date(); dt.setDate(dt.getDate() - i)
+    const dt = new Date()
+    dt.setDate(dt.getDate() - i)
     if (dt.getDay() === 0 || dt.getDay() === 6) continue
     price = Math.max(base * 0.4, price * (1 + (rng(d++) - 0.47) * 0.022))
     const o = Math.round(price * 100) / 100
@@ -116,40 +143,32 @@ function sim(ticker: string): OHLCV[] {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Returns { symbols, sectors } — exactly what scan/route.ts expects */
 export function getNifty500Symbols(): { symbols: string[]; sectors: Record<string, string> } {
   return { symbols: Object.keys(UNIVERSE), sectors: UNIVERSE }
 }
 
-/** Fetches OHLCV candles. Falls back to simulation on any error. */
 export async function fetchCandles(nseTicker: string, _period = '1y'): Promise<OHLCV[]> {
-  const redis = getRedis()
-  const key = 'av:v6:' + nseTicker
-  try {
-    const c = await redis.get<string>(key)
-    if (c) return JSON.parse(c) as OHLCV[]
-  } catch { /* miss */ }
+  const key = 'av:v7:' + nseTicker
+  const cached = await cacheGet(key)
+  if (cached) return JSON.parse(cached) as OHLCV[]
 
-  const k = KEY()
-  if (!k) return sim(nseTicker)
+  const avKey = process.env.ALPHA_VANTAGE_API_KEY ?? ''
+  if (!avKey) return sim(nseTicker)
 
   const sym = BSE[nseTicker] ?? nseTicker.replace('.NS', '.BSE')
   try {
-    const res = await fetch(`${AV}?function=TIME_SERIES_DAILY&symbol=${sym}&outputsize=full&apikey=${k}`, {
-      headers: { 'User-Agent': 'NiftySniper/1.0' },
-    })
+    const res = await fetch(
+      `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${sym}&outputsize=full&apikey=${avKey}`,
+      { headers: { 'User-Agent': 'NiftySniper/1.0' } }
+    )
     if (!res.ok) throw new Error('HTTP ' + res.status)
     const json = await res.json() as Record<string, unknown>
-
     if (json['Note'] || json['Information']) {
-      const s = sim(nseTicker)
-      await redis.setex(key, 300, JSON.stringify(s)).catch(() => {})
-      return s
+      await cacheSet(key, 300, JSON.stringify(sim(nseTicker)))
+      return sim(nseTicker)
     }
-
     const series = json['Time Series (Daily)'] as Record<string, Record<string, string>> | undefined
     if (!series) return sim(nseTicker)
-
     const candles: OHLCV[] = Object.entries(series)
       .map(([date, v]) => ({
         time: new Date(date).getTime(),
@@ -160,38 +179,35 @@ export async function fetchCandles(nseTicker: string, _period = '1y'): Promise<O
         volume: parseInt(v['5. volume']),
       }))
       .sort((a, b) => a.time - b.time)
-
-    await redis.setex(key, 3600, JSON.stringify(candles)).catch(() => {})
+    await cacheSet(key, 3600, JSON.stringify(candles))
     return candles
   } catch {
     return sim(nseTicker)
   }
 }
 
-/** Returns raw index values for the pulse bar */
 export async function fetchMarketPulse(): Promise<Record<string, number>> {
-  const redis = getRedis()
-  const key = 'av:pulse:v6'
-  try {
-    const c = await redis.get<string>(key)
-    if (c) return JSON.parse(c) as Record<string, number>
-  } catch { /* miss */ }
+  const key = 'av:pulse:v7'
+  const cached = await cacheGet(key)
+  if (cached) return JSON.parse(cached) as Record<string, number>
 
   const defaults: Record<string, number> = {
     '^NSEI': 24117, '^NSEI_prev': 23934, '^NSEBANK': 51842,
     '^BSESN': 79486, '^INDIAVIX': 22.81, 'USDINR=X': 83.42,
   }
 
-  const k = KEY()
-  if (k) {
+  const avKey = process.env.ALPHA_VANTAGE_API_KEY ?? ''
+  if (avKey) {
     try {
-      const r = await fetch(`${AV}?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=INR&apikey=${k}`)
+      const r = await fetch(
+        `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=INR&apikey=${avKey}`
+      )
       const j = await r.json() as Record<string, Record<string, string>>
       const rate = j?.['Realtime Currency Exchange Rate']?.['5. Exchange Rate']
       if (rate) defaults['USDINR=X'] = Math.round(parseFloat(rate) * 100) / 100
-    } catch { /* use default */ }
+    } catch { /* use defaults */ }
   }
 
-  await redis.setex(key, 60, JSON.stringify(defaults)).catch(() => {})
+  await cacheSet(key, 60, JSON.stringify(defaults))
   return defaults
 }
