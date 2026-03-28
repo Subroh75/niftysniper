@@ -1,6 +1,6 @@
 export type Recommendation = 'STRONG BUY' | 'BUY' | 'NEUTRAL' | 'SELL' | 'STRONG SELL'
-export type Regime = 'BULLISH' | 'NEUTRAL' | 'BEARISH'
-export type Universe = 'NIFTY50' | 'NIFTY200' | 'NIFTY500' | 'NIFTY100' | 'FULL_MARKET'
+export type Regime     = 'BULLISH' | 'NEUTRAL' | 'BEARISH'
+export type Universe   = 'NIFTY50' | 'NIFTY200' | 'NIFTY500' | 'NIFTY100' | 'FULL_MARKET'
 
 export interface StockMetrics {
   ticker:         string
