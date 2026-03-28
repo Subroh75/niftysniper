@@ -372,7 +372,7 @@ export default function Dashboard() {
             <>
               {activeTab === 'miro'         && <><PanelHeader title="F1  MIRO MOMENTUM LEADERBOARD" sub="Hot money detection — Vol Surge × Price Velocity" /><StocksTable stocks={result.stocks} sortKey="miroScore" /></>}
               {activeTab === 'trend'        && <><PanelHeader title="F2  STRUCTURAL TREND & ADX" sub="Golden Alignment: Price > MA50 > MA200 | ADX > 25 confirms trend" /><StocksTable stocks={result.stocks} sortKey="adxStrength" /></>}
-              {activeTab === 'reversion'    && <><PanelHeader title="F3  MEAN REVERSION — Z-SCORE" sub="Z-Score < -1.5: rubber band stretched, snap-back expected 1-3 sessions" /><StocksTable stocks={result.stocks.filter(s => s.zScore <= -1.5)} sortKey="zScore" /></>}
+              {activeTab === 'reversion'    && <><PanelHeader title="F3  MEAN REVERSION — Z-SCORE" sub="Oversold Z < -2.5 = STRONG BUY · Overbought Z > +2.5 = STRONG SELL · Snap-back expected 1-3 sessions" /><StocksTable stocks={result.stocks.filter(s => s.zScore <= -2.5 || s.zScore >= 2.5)} sortKey="zScore" /></>}
               {activeTab === 'weekly'       && <><PanelHeader title="F4  WEEKLY INSTITUTIONAL FLOW" sub="Vol Surge > 2x with minimal price move = institutional accumulation" /><StocksTable stocks={result.stocks} sortKey="volSurge" /></>}
               {activeTab === 'filing'       && <AIPanel tickers={tickers} pulse={result.pulse} mode="filing" />}
               {activeTab === 'intelligence' && <AIPanel tickers={tickers} pulse={result.pulse} mode="debate" />}
