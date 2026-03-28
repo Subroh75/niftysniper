@@ -1,4 +1,4 @@
-export type Recommendation = 'STRONG BUY' | 'BUY' | 'NEUTRAL' | 'STRONG SELL' | 'REVERSION BUY'
+export type Recommendation = 'STRONG BUY' | 'BUY' | 'NEUTRAL' | 'SELL' | 'STRONG SELL'
 export type Regime = 'BULLISH' | 'NEUTRAL' | 'BEARISH'
 export type Universe = 'NIFTY100' | 'NIFTY500' | 'FULL_MARKET'
 
