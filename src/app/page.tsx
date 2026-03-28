@@ -40,7 +40,8 @@ function RecoBadge({ reco }: { reco: string }) {
   const col =
     reco === 'STRONG BUY'  ? C.green  :
     reco === 'STRONG SELL' ? C.red    :
-    reco === 'REVERSION BUY' ? C.amber :
+    reco === 'BUY'         ? '#00cc66' :
+    reco === 'SELL'        ? '#ff8800' :
     C.grey
   return (
     <span style={{
@@ -95,9 +96,12 @@ function AIPanel({ tickers, pulse, mode }: { tickers: string[]; pulse: ScanResul
   const [content, setContent] = useState('')
   const abortRef = useRef<AbortController|null>(null)
 
+  const bufRef = useRef('')
   async function run() {
     if (streaming) { abortRef.current?.abort(); setStreaming(false); return }
-    setContent(''); setStreaming(true)
+    bufRef.current = ''
+    setContent('')
+    setStreaming(true)
     abortRef.current = new AbortController()
     try {
       const res = await fetch('/api/intelligence', {
@@ -112,11 +116,18 @@ function AIPanel({ tickers, pulse, mode }: { tickers: string[]; pulse: ScanResul
         const { done, value } = await reader.read(); if (done) break
         for (const line of dec.decode(value).split('\n').filter(l => l.startsWith('data: '))) {
           if (line.slice(6) === '[DONE]') break
-          try { const { text } = JSON.parse(line.slice(6)); setContent(p => p + text) } catch {}
+          try {
+            const { text } = JSON.parse(line.slice(6))
+            bufRef.current += text
+            setContent(bufRef.current)
+          } catch {}
         }
       }
     } catch (e: unknown) {
-      if (e instanceof Error && e.name !== 'AbortError') setContent(p => p + '\n\n[ERROR] ' + String(e))
+      if (e instanceof Error && e.name !== 'AbortError') {
+        bufRef.current += '\n\n[ERROR] ' + String(e)
+        setContent(bufRef.current)
+      }
     } finally { setStreaming(false) }
   }
 
