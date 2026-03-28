@@ -18,12 +18,12 @@ const C = {
 }
 
 const TABS = [
-  { id: 'miro',         label: 'F1 MIRO'     },
-  { id: 'trend',        label: 'F2 TREND'    },
-  { id: 'reversion',    label: 'F3 REVERT'   },
-  { id: 'weekly',       label: 'F4 WEEKLY'   },
-  { id: 'filing',       label: 'F5 FILING'   },
-  { id: 'intelligence', label: 'F6 AI LAB'   },
+  { id: 'miro',         label: 'Miro'      },
+  { id: 'trend',        label: 'Trend'     },
+  { id: 'reversion',   label: 'Reversion' },
+  { id: 'weekly',       label: 'Weekly'    },
+  { id: 'filing',       label: 'AI Lab'    },
+  { id: 'intelligence', label: 'AI Debate' },
 ]
 
 const UNIVERSES = [
@@ -131,8 +131,8 @@ function AIPanel({ tickers, pulse, mode }: { tickers: string[]; pulse: ScanResul
     } finally { setStreaming(false) }
   }
 
-  const label = mode === 'debate' ? 'F6  AI INVESTMENT COUNCIL' : 'F5  SEBI REG-30 FILING AUDIT'
-  const btnLabel = streaming ? 'F10 STOP' : mode === 'debate' ? 'F8  SUMMON COUNCIL' : 'F8  RUN AUDIT'
+  const label = mode === 'debate' ? 'AI DEBATE — INVESTMENT COUNCIL' : 'AI LAB — SEBI REG-30 FILING AUDIT'
+  const btnLabel = streaming ? 'STOP' : mode === 'debate' ? 'SUMMON COUNCIL' : 'RUN AUDIT'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -163,7 +163,7 @@ function AIPanel({ tickers, pulse, mode }: { tickers: string[]; pulse: ScanResul
           </pre>
         ) : (
           <div style={{ padding: 40, textAlign: 'center', fontFamily: 'monospace', fontSize: 10, color: '#333' }}>
-            SELECT STOCK → PRESS {mode === 'debate' ? 'F8 SUMMON COUNCIL' : 'F8 RUN AUDIT'}
+            SELECT STOCK → PRESS {mode === 'debate' ? 'SUMMON COUNCIL' : 'RUN AUDIT'}
           </div>
         )}
       </div>
@@ -381,10 +381,10 @@ export default function Dashboard() {
           {/* Results */}
           {result && !scanning && (
             <>
-              {activeTab === 'miro'         && <><PanelHeader title="F1  MIRO MOMENTUM LEADERBOARD" sub="Hot money detection — Vol Surge × Price Velocity" /><StocksTable stocks={result.stocks} sortKey="miroScore" /></>}
-              {activeTab === 'trend'        && <><PanelHeader title="F2  STRUCTURAL TREND & ADX" sub="Golden Alignment: Price > MA50 > MA200 | ADX > 25 confirms trend" /><StocksTable stocks={result.stocks} sortKey="adxStrength" /></>}
-              {activeTab === 'reversion'    && <><PanelHeader title="F3  MEAN REVERSION — Z-SCORE" sub="Oversold Z < -2.5 = STRONG BUY · Overbought Z > +2.5 = STRONG SELL · Snap-back expected 1-3 sessions" /><StocksTable stocks={result.stocks.filter(s => s.zScore <= -2.5 || s.zScore >= 2.5)} sortKey="zScore" /></>}
-              {activeTab === 'weekly'       && <><PanelHeader title="F4  WEEKLY INSTITUTIONAL FLOW" sub="Vol Surge > 2x with minimal price move = institutional accumulation" /><StocksTable stocks={result.stocks} sortKey="volSurge" /></>}
+              {activeTab === 'miro'         && <><PanelHeader title="MIRO MOMENTUM LEADERBOARD" sub="Hot money detection — Vol Surge × Price Velocity" /><StocksTable stocks={result.stocks} sortKey="miroScore" /></>}
+              {activeTab === 'trend'        && <><PanelHeader title="STRUCTURAL TREND & ADX" sub="Golden Alignment: Price > MA50 > MA200 | ADX > 25 confirms trend" /><StocksTable stocks={result.stocks} sortKey="adxStrength" /></>}
+              {activeTab === 'reversion'    && <><PanelHeader title="MEAN REVERSION — Z-SCORE" sub="Oversold Z < -2.5 = STRONG BUY · Overbought Z > +2.5 = STRONG SELL · Snap-back expected 1-3 sessions" /><StocksTable stocks={result.stocks.filter(s => s.zScore <= -2.5 || s.zScore >= 2.5)} sortKey="zScore" /></>}
+              {activeTab === 'weekly'       && <><PanelHeader title="WEEKLY INSTITUTIONAL FLOW" sub="Vol Surge > 2x with minimal price move = institutional accumulation" /><StocksTable stocks={result.stocks} sortKey="volSurge" /></>}
               {activeTab === 'filing'       && <AIPanel tickers={tickers} pulse={result.pulse} mode="filing" />}
               {activeTab === 'intelligence' && <AIPanel tickers={tickers} pulse={result.pulse} mode="debate" />}
             </>
@@ -394,7 +394,7 @@ export default function Dashboard() {
 
       {/* ── STATUS BAR ───────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 12px', background: '#0d0d0d', borderTop: '1px solid #1a1a1a', fontSize: 9, fontFamily: 'monospace', color: C.grey, flexShrink: 0 }}>
-        <span style={{ color: C.orange }}>NIFTYSNIPER v1.0</span>
+        <span style={{ color: C.orange }}>NIFTYSNIPER v1.2</span>
         <span>NSE · ALPHA VANTAGE · CLAUDE AI</span>
         <span style={{ color: C.green }}>● LIVE</span>
       </div>
