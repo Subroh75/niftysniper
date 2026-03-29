@@ -155,22 +155,22 @@ export async function fetchCandles(nseTicker: string, _period = '2y'): Promise<O
       { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) }
     )
     if (!res.ok) return sim(nseTicker)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const json = await res.json() as any
-    const result = json?.chart?.result?.[0]
+    const json = await res.json() as Record<string, unknown>
+    const chart = (json as Record<string, Record<string, unknown[]>>)?.chart
+    const result = chart?.result?.[0] as Record<string, unknown> | undefined
     if (!result) return sim(nseTicker)
-    const timestamps: number[] = result.timestamp
-    const q = result.indicators.quote[0]
+    const timestamps = result.timestamp as number[]
+    const quote = (result.indicators as Record<string, unknown[]>).quote[0] as Record<string, number[]>
     const candles: OHLCV[] = timestamps
-      .map((t: number, i: number) => ({
+      .map((t, i) => ({
         time:   t * 1000,
-        open:   Math.round((q.open[i]  ?? q.close[i]) * 100) / 100,
-        high:   Math.round((q.high[i]  ?? q.close[i]) * 100) / 100,
-        low:    Math.round((q.low[i]   ?? q.close[i]) * 100) / 100,
-        close:  Math.round((q.close[i] ?? 0)          * 100) / 100,
-        volume: q.volume[i] ?? 0,
+        open:   Math.round((quote.open[i]  ?? quote.close[i]) * 100) / 100,
+        high:   Math.round((quote.high[i]  ?? quote.close[i]) * 100) / 100,
+        low:    Math.round((quote.low[i]   ?? quote.close[i]) * 100) / 100,
+        close:  Math.round((quote.close[i] ?? 0)              * 100) / 100,
+        volume: quote.volume[i] ?? 0,
       }))
-      .filter((c: OHLCV) => c.close > 0)
+      .filter(c => c.close > 0)
     if (candles.length < 20) return sim(nseTicker)
     await cacheSet(cacheKey, 3600, JSON.stringify(candles))
     return candles
@@ -193,9 +193,12 @@ export async function fetchMarketPulse(): Promise<Record<string, number>> {
           { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) }
         )
         if (!res.ok) return
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const json = await res.json() as any
-        const closes: number[] = (json?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? []).filter(Boolean)
+        const json = await res.json() as Record<string, unknown>
+        const chart = (json as Record<string, Record<string, unknown[]>>)?.chart
+        const result = chart?.result?.[0] as Record<string, unknown> | undefined
+        if (!result) return
+        const quote = ((result.indicators as Record<string, unknown[]>).quote[0]) as Record<string, number[]>
+        const closes = (quote.close ?? []).filter(Boolean)
         if (!closes.length) return
         defaults[sym] = Math.round(closes[closes.length - 1] * 100) / 100
         if (sym === '^NSEI' && closes.length >= 2)
@@ -205,4 +208,4 @@ export async function fetchMarketPulse(): Promise<Record<string, number>> {
   )
   await cacheSet(cacheKey, 60, JSON.stringify(defaults))
   return defaults
-  }
+                                                                 }
