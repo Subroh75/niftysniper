@@ -27,9 +27,9 @@ const TABS = [
 ]
 
 const UNIVERSES = [
-  { value: 'NIFTY100'   as Universe, label: 'NIFTY 100',   sub: '~2 MIN'  },
-  { value: 'NIFTY500'   as Universe, label: 'NIFTY 500',   sub: '~8 MIN'  },
-  { value: 'FULL_MARKET' as Universe, label: 'FULL MARKET', sub: '~20 MIN' },
+  { value: 'NIFTY50'  as Universe, label: 'NIFTY 50',  sub: '~1 MIN', tier: 'free' },
+  { value: 'NIFTY200' as Universe, label: 'NIFTY 200', sub: '~4 MIN', tier: 'pro'  },
+  { value: 'NIFTY500' as Universe, label: 'NIFTY 500', sub: '~8 MIN', tier: 'pro'  },
 ]
 
 function BB(style: React.CSSProperties = {}, children?: React.ReactNode) {
@@ -175,7 +175,7 @@ function AIPanel({ tickers, pulse, mode }: { tickers: string[]; pulse: ScanResul
 
 export default function Dashboard() {
   const [activeTab, setActiveTab]   = useState('miro')
-  const [universe, setUniverse]     = useState<Universe>('NIFTY100')
+  const [universe, setUniverse]     = useState<Universe>('NIFTY50')
   const [riskInr, setRiskInr]       = useState(5000)
   const [scanning, setScanning]     = useState(false)
   const [progress, setProgress]     = useState({ done: 0, total: 0 })
@@ -274,22 +274,34 @@ export default function Dashboard() {
           {/* Universe */}
           <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a1a' }}>
             <div style={{ fontSize: 9, color: C.orange, letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>SCAN UNIVERSE</div>
-            {UNIVERSES.map(u => (
-              <button
-                key={u.value}
-                onClick={() => setUniverse(u.value)}
-                style={{
-                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '5px 8px', marginBottom: 3, cursor: 'pointer', fontFamily: 'monospace',
-                  fontSize: 10, border: '1px solid ' + (universe === u.value ? C.orange : '#222'),
-                  background: universe === u.value ? '#1a0a00' : 'transparent',
-                  color: universe === u.value ? C.orange : C.grey,
-                }}
-              >
-                <span>{u.label}</span>
-                <span style={{ fontSize: 8, opacity: 0.6 }}>{u.sub}</span>
-              </button>
-            ))}
+            {UNIVERSES.map(u => {
+              const isPro = u.tier === 'pro'
+              const isActive = universe === u.value
+              return (
+                <button
+                  key={u.value}
+                  onClick={() => { if (!isPro) setUniverse(u.value) }}
+                  title={isPro ? 'Upgrade to Pro to unlock' : ''}
+                  style={{
+                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '5px 8px', marginBottom: 3, fontFamily: 'monospace', fontSize: 10,
+                    cursor: isPro ? 'not-allowed' : 'pointer',
+                    border: '1px solid ' + (isActive ? C.orange : isPro ? '#1a1a1a' : '#222'),
+                    background: isActive ? '#1a0a00' : isPro ? '#080808' : 'transparent',
+                    color: isActive ? C.orange : isPro ? '#333' : C.grey,
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {isPro
+                      ? <span style={{ fontSize: 7, color: C.orange, border: '1px solid rgba(255,102,0,0.4)', padding: '0 3px' }}>PRO</span>
+                      : <span style={{ fontSize: 7, color: C.green,  border: '1px solid rgba(0,255,65,0.4)',  padding: '0 3px' }}>FREE</span>
+                    }
+                    {u.label}
+                  </span>
+                  <span style={{ fontSize: 8, opacity: 0.4 }}>{isPro ? '🔒' : u.sub}</span>
+                </button>
+              )
+            })}
           </div>
 
           {/* Risk capital */}
@@ -394,7 +406,7 @@ export default function Dashboard() {
 
       {/* ── STATUS BAR ───────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 12px', background: '#0d0d0d', borderTop: '1px solid #1a1a1a', fontSize: 9, fontFamily: 'monospace', color: C.grey, flexShrink: 0 }}>
-        <span style={{ color: C.orange }}>NIFTYSNIPER v1.2</span>
+        <span style={{ color: C.orange }}>NIFTYSNIPER v1.3</span>
         <span>NSE · ALPHA VANTAGE · CLAUDE AI</span>
         <span style={{ color: C.green }}>● LIVE</span>
       </div>
