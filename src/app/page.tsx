@@ -678,6 +678,7 @@ export default function Dashboard() {
   const [regName, setRegName]         = useState('')
   const [regEmail, setRegEmail]       = useState('')
   const [regPhone, setRegPhone]       = useState('')
+  const [regCountry, setRegCountry]   = useState('+91')
   const [regPwd, setRegPwd]           = useState('')
   const [regUser, setRegUser]         = useState('')
   const [regErr, setRegErr]           = useState('')
@@ -754,15 +755,26 @@ export default function Dashboard() {
     const lbl = { fontFamily:'monospace', fontSize:9, color:'#555', letterSpacing:1, marginBottom:4, display:'block' as const }
     const doLogin = () => {
       if (!loginEmail || !loginPwd) { setLoginErr('Email and password required'); return }
-      // Hardcoded for now — replace with real auth later
-      if (loginPwd === 'nifty2024') { setLoggedIn(true) } else { setLoginErr('Invalid credentials') }
+      // Check localStorage users OR demo credentials
+      const users = JSON.parse(localStorage.getItem('ns_users') || '[]')
+      const found = users.find((u: {email:string}) => u.email === loginEmail)
+      if (loginPwd === 'nifty2024' || found) {
+        const session = found || { name:'Demo User', username:'demo', email:loginEmail }
+        localStorage.setItem('ns_session', JSON.stringify(session))
+        setLoggedIn(true)
+      } else { setLoginErr('Invalid credentials. Use demo password: nifty2024 or register first.') }
     }
     const doRegister = () => {
       if (!regName || !regEmail || !regPhone || !regPwd || !regUser) { setRegErr('All fields are required'); return }
       if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(regEmail)) { setRegErr('Invalid email address'); return }
       if (!/^[6-9]d{9}$/.test(regPhone)) { setRegErr('Enter valid 10-digit Indian mobile number'); return }
       if (regPwd.length < 6) { setRegErr('Password must be at least 6 characters'); return }
-      // Simulate registration success — wire to real DB later
+      // Store user in localStorage (wire to real DB later)
+      const users = JSON.parse(localStorage.getItem('ns_users') || '[]')
+      if (users.find((u: {email:string}) => u.email === regEmail)) { setRegErr('Email already registered. Please sign in.'); return }
+      const newUser = { name:regName, username:regUser, email:regEmail, phone:regCountry+regPhone, createdAt: new Date().toISOString() }
+      localStorage.setItem('ns_users', JSON.stringify([...users, newUser]))
+      localStorage.setItem('ns_session', JSON.stringify(newUser))
       setLoggedIn(true)
     }
     return (
@@ -853,8 +865,26 @@ export default function Dashboard() {
                 <input style={inp} type="email" placeholder="subroh@email.com" value={regEmail} onChange={e => { setRegEmail(e.target.value); setRegErr('') }} />
               </div>
               <div>
-                <label style={lbl}>MOBILE NUMBER * (for alerts)</label>
-                <input style={inp} type="tel" placeholder="98765 43210" value={regPhone} onChange={e => { setRegPhone(e.target.value.replace(/D/g,'')); setRegErr('') }} maxLength={10} />
+                <label style={lbl}>MOBILE NUMBER * (international, for alerts)</label>
+                <div style={{ display:'flex', gap:6 }}>
+                  <select value={regCountry} onChange={e => setRegCountry(e.target.value)}
+                    style={{ background:'#0d0d0d', border:'1px solid #222', color:C.white, fontFamily:'monospace', fontSize:10, padding:'10px 4px', width:110, flexShrink:0 }}>
+                    {[['+91','IN +91'],['+1','US +1'],['+44','GB +44'],['+61','AU +61'],
+                      ['+65','SG +65'],['+971','AE +971'],['+60','MY +60'],['+66','TH +66'],
+                      ['+81','JP +81'],['+82','KR +82'],['+86','CN +86'],['+49','DE +49'],
+                      ['+33','FR +33'],['+39','IT +39'],['+34','ES +34'],['+7','RU +7'],
+                      ['+55','BR +55'],['+27','ZA +27'],['+234','NG +234'],['+254','KE +254'],
+                      ['+92','PK +92'],['+880','BD +880'],['+94','LK +94'],['+977','NP +977'],
+                      ['+64','NZ +64'],['+45','DK +45'],['+46','SE +46'],['+47','NO +47'],
+                      ['+31','NL +31'],['+41','CH +41'],['+48','PL +48'],['+90','TR +90'],
+                      ['+62','ID +62'],['+63','PH +63'],['+84','VN +84'],['+20','EG +20'],
+                      ['+212','MA +212'],['+32','BE +32'],['+30','GR +30'],['+52','MX +52'],
+                    ].map(([val,lab]) => <option key={val} value={val}>{lab}</option>)}
+                  </select>
+                  <input style={{ ...inp, flex:1 }} type="tel" placeholder="9876543210"
+                    value={regPhone} onChange={e => { setRegPhone(e.target.value.replace(/\D/g,'')); setRegErr('') }} maxLength={15} />
+                </div>
+                <div style={{ fontFamily:'monospace', fontSize:8, color:'#333', marginTop:3 }}>Full number will be: {regCountry} {regPhone || 'xxxxxxxxxx'}</div>
               </div>
               <div>
                 <label style={lbl}>PASSWORD * (min 6 characters)</label>
