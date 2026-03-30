@@ -671,8 +671,16 @@ export default function Dashboard() {
 
   const [error, setError]             = useState<string|null>(null)
   const [loggedIn, setLoggedIn]       = useState(false)
+  const [authMode, setAuthMode]       = useState<'login'|'register'>('login')
+  const [loginEmail, setLoginEmail]   = useState('')
   const [loginPwd, setLoginPwd]       = useState('')
-  const [loginErr, setLoginErr]       = useState(false)
+  const [loginErr, setLoginErr]       = useState('')
+  const [regName, setRegName]         = useState('')
+  const [regEmail, setRegEmail]       = useState('')
+  const [regPhone, setRegPhone]       = useState('')
+  const [regPwd, setRegPwd]           = useState('')
+  const [regUser, setRegUser]         = useState('')
+  const [regErr, setRegErr]           = useState('')
 
   const abortRef = useRef<AbortController|null>(null)
 
@@ -740,23 +748,139 @@ export default function Dashboard() {
 
 
 
+  // ─── AUTH SCREEN ────────────────────────────────────────────────────────────
   if (!loggedIn) {
+    const inp = { background:'#0d0d0d', border:'1px solid #222', color:C.white, fontFamily:'monospace', fontSize:12, padding:'10px 12px', outline:'none', width:'100%', boxSizing:'border-box' as const }
+    const lbl = { fontFamily:'monospace', fontSize:9, color:'#555', letterSpacing:1, marginBottom:4, display:'block' as const }
+    const doLogin = () => {
+      if (!loginEmail || !loginPwd) { setLoginErr('Email and password required'); return }
+      // Hardcoded for now — replace with real auth later
+      if (loginPwd === 'nifty2024') { setLoggedIn(true) } else { setLoginErr('Invalid credentials') }
+    }
+    const doRegister = () => {
+      if (!regName || !regEmail || !regPhone || !regPwd || !regUser) { setRegErr('All fields are required'); return }
+      if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(regEmail)) { setRegErr('Invalid email address'); return }
+      if (!/^[6-9]d{9}$/.test(regPhone)) { setRegErr('Enter valid 10-digit Indian mobile number'); return }
+      if (regPwd.length < 6) { setRegErr('Password must be at least 6 characters'); return }
+      // Simulate registration success — wire to real DB later
+      setLoggedIn(true)
+    }
     return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#000', flexDirection:'column', gap:24 }}>
-        <div style={{ fontFamily:'monospace', fontSize:26, color:C.orange, fontWeight:900, letterSpacing:5 }}>NIFTYSNIPER</div>
-        <div style={{ fontFamily:'monospace', fontSize:10, color:'#444', letterSpacing:3 }}>INSTITUTIONAL MARKET INTELLIGENCE TERMINAL</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:20, width:300 }}>
-          <input type="password" placeholder="Enter access code" value={loginPwd}
-            onChange={e => { setLoginPwd(e.target.value); setLoginErr(false) }}
-            onKeyDown={e => { if(e.key==='Enter'){ if(loginPwd==='nifty2024') setLoggedIn(true); else setLoginErr(true) }}}
-            style={{ background:'#0a0a0a', border:'1px solid '+(loginErr?C.red:'#333'), color:C.amber, fontFamily:'monospace', fontSize:13, padding:'10px 14px', outline:'none', letterSpacing:2 }} autoFocus />
-          <button onClick={() => { if(loginPwd==='nifty2024') setLoggedIn(true); else setLoginErr(true) }}
-            style={{ background:C.orange, border:'none', color:'#000', fontFamily:'monospace', fontSize:12, fontWeight:900, padding:'10px 0', cursor:'pointer', letterSpacing:3 }}>
-            ACCESS TERMINAL
-          </button>
-          {loginErr && <div style={{ fontFamily:'monospace', fontSize:10, color:C.red, textAlign:'center' }}>INVALID ACCESS CODE</div>}
+      <div style={{ minHeight:'100vh', background:'#000', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px 16px' }}>
+        {/* Logo */}
+        <div style={{ textAlign:'center', marginBottom:32 }}>
+          <div style={{ fontFamily:'monospace', fontSize:28, color:C.orange, fontWeight:900, letterSpacing:6 }}>NIFTYSNIPER</div>
+          <div style={{ fontFamily:'monospace', fontSize:10, color:'#444', letterSpacing:3, marginTop:4 }}>INSTITUTIONAL MARKET INTELLIGENCE TERMINAL</div>
         </div>
-        <div style={{ fontFamily:'monospace', fontSize:9, color:'#222', marginTop:40 }}>v1.3 · NSE · YAHOO FINANCE · CLAUDE AI</div>
+
+        {/* Card */}
+        <div style={{ width:'100%', maxWidth:420, background:'#080808', border:'1px solid #1a1a1a', padding:32 }}>
+
+          {/* Tabs */}
+          <div style={{ display:'flex', marginBottom:28, borderBottom:'1px solid #1a1a1a' }}>
+            {(['login','register'] as const).map(m => (
+              <button key={m} onClick={() => { setAuthMode(m); setLoginErr(''); setRegErr('') }}
+                style={{ flex:1, padding:'8px 0', fontFamily:'monospace', fontSize:11, fontWeight:700, letterSpacing:2, cursor:'pointer', border:'none', background:'transparent', color:authMode===m?C.orange:'#444', borderBottom:'2px solid '+(authMode===m?C.orange:'transparent'), textTransform:'uppercase' as const }}>
+                {m === 'login' ? 'Sign In' : 'Register'}
+              </button>
+            ))}
+          </div>
+
+          {authMode === 'login' ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              {/* Social login */}
+              <div style={{ display:'flex', gap:10 }}>
+                <button style={{ flex:1, padding:'10px 0', background:'#111', border:'1px solid #222', color:C.white, fontFamily:'monospace', fontSize:11, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <span style={{ fontSize:16 }}>G</span> Google
+                </button>
+                <button style={{ flex:1, padding:'10px 0', background:'#111', border:'1px solid #222', color:C.white, fontFamily:'monospace', fontSize:11, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <span style={{ fontSize:16 }}>🍎</span> Apple
+                </button>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ flex:1, height:1, background:'#1a1a1a' }} />
+                <span style={{ fontFamily:'monospace', fontSize:9, color:'#333' }}>OR</span>
+                <div style={{ flex:1, height:1, background:'#1a1a1a' }} />
+              </div>
+              {/* Phone / email */}
+              <div>
+                <label style={lbl}>EMAIL OR PHONE</label>
+                <input style={{ ...inp, borderColor: loginErr ? C.red : '#222' }} type="text" placeholder="email@example.com or +91 98765 43210"
+                  value={loginEmail} onChange={e => { setLoginEmail(e.target.value); setLoginErr('') }} onKeyDown={e => e.key==='Enter' && doLogin()} autoFocus />
+              </div>
+              <div>
+                <label style={lbl}>PASSWORD</label>
+                <input style={{ ...inp, borderColor: loginErr ? C.red : '#222' }} type="password" placeholder="••••••••"
+                  value={loginPwd} onChange={e => { setLoginPwd(e.target.value); setLoginErr('') }} onKeyDown={e => e.key==='Enter' && doLogin()} />
+              </div>
+              {loginErr && <div style={{ fontFamily:'monospace', fontSize:10, color:C.red }}>{loginErr}</div>}
+              <button onClick={doLogin}
+                style={{ width:'100%', padding:'12px 0', background:C.orange, border:'none', color:'#000', fontFamily:'monospace', fontSize:12, fontWeight:900, letterSpacing:3, cursor:'pointer' }}>
+                ACCESS TERMINAL
+              </button>
+              <div style={{ fontFamily:'monospace', fontSize:9, color:'#333', textAlign:'center' }}>
+                Dont have an account? <span onClick={() => setAuthMode('register')} style={{ color:C.orange, cursor:'pointer' }}>Register here</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {/* Social sign up */}
+              <div style={{ display:'flex', gap:10 }}>
+                <button style={{ flex:1, padding:'10px 0', background:'#111', border:'1px solid #222', color:C.white, fontFamily:'monospace', fontSize:11, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <span style={{ fontSize:16 }}>G</span> Google
+                </button>
+                <button style={{ flex:1, padding:'10px 0', background:'#111', border:'1px solid #222', color:C.white, fontFamily:'monospace', fontSize:11, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <span style={{ fontSize:16 }}>🍎</span> Apple
+                </button>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ flex:1, height:1, background:'#1a1a1a' }} />
+                <span style={{ fontFamily:'monospace', fontSize:9, color:'#333' }}>OR REGISTER WITH EMAIL</span>
+                <div style={{ flex:1, height:1, background:'#1a1a1a' }} />
+              </div>
+              <div style={{ display:'flex', gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <label style={lbl}>FULL NAME *</label>
+                  <input style={inp} type="text" placeholder="Subroh Iyer" value={regName} onChange={e => { setRegName(e.target.value); setRegErr('') }} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <label style={lbl}>USERNAME *</label>
+                  <input style={inp} type="text" placeholder="subroh75" value={regUser} onChange={e => { setRegUser(e.target.value); setRegErr('') }} />
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>EMAIL ADDRESS *</label>
+                <input style={inp} type="email" placeholder="subroh@email.com" value={regEmail} onChange={e => { setRegEmail(e.target.value); setRegErr('') }} />
+              </div>
+              <div>
+                <label style={lbl}>MOBILE NUMBER * (for alerts)</label>
+                <input style={inp} type="tel" placeholder="98765 43210" value={regPhone} onChange={e => { setRegPhone(e.target.value.replace(/D/g,'')); setRegErr('') }} maxLength={10} />
+              </div>
+              <div>
+                <label style={lbl}>PASSWORD * (min 6 characters)</label>
+                <input style={inp} type="password" placeholder="••••••••" value={regPwd} onChange={e => { setRegPwd(e.target.value); setRegErr('') }} />
+              </div>
+              {regErr && <div style={{ fontFamily:'monospace', fontSize:10, color:C.red }}>{regErr}</div>}
+              <button onClick={doRegister}
+                style={{ width:'100%', padding:'12px 0', background:C.orange, border:'none', color:'#000', fontFamily:'monospace', fontSize:12, fontWeight:900, letterSpacing:3, cursor:'pointer' }}>
+                CREATE ACCOUNT
+              </button>
+              <div style={{ fontFamily:'monospace', fontSize:9, color:'#333', textAlign:'center' }}>
+                Already registered? <span onClick={() => setAuthMode('login')} style={{ color:C.orange, cursor:'pointer' }}>Sign in</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Disclaimer */}
+        <div style={{ maxWidth:420, marginTop:20, padding:'14px 16px', border:'1px solid #1a0a00', background:'#0a0500' }}>
+          <div style={{ fontFamily:'monospace', fontSize:9, color:'#ff8800', fontWeight:700, letterSpacing:1, marginBottom:6 }}>⚠ DISCLAIMER</div>
+          <div style={{ fontFamily:'monospace', fontSize:9, color:'#555', lineHeight:1.7 }}>
+            NiftySniper is <strong style={{ color:'#888' }}>NOT registered with SEBI</strong>. This is an institutional-grade market scanner designed to assist traders in their research journey. All signals, scores and outputs are <strong style={{ color:'#888' }}>not buy/sell recommendations</strong>. Trading in equities and derivatives involves substantial risk of loss. Past performance does not guarantee future results. Please consult a SEBI-registered investment advisor before making any investment decisions. By accessing this terminal you acknowledge that you have read and accepted these terms.
+          </div>
+        </div>
+
+        <div style={{ fontFamily:'monospace', fontSize:9, color:'#1a1a1a', marginTop:16 }}>v1.3 · NSE · YAHOO FINANCE · CLAUDE AI</div>
       </div>
     )
   }
