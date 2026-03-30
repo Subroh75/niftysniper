@@ -766,8 +766,8 @@ export default function Dashboard() {
     }
     const doRegister = () => {
       if (!regName || !regEmail || !regPhone || !regPwd || !regUser) { setRegErr('All fields are required'); return }
-      if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(regEmail)) { setRegErr('Invalid email address'); return }
-      if (!/^[6-9]d{9}$/.test(regPhone)) { setRegErr('Enter valid 10-digit Indian mobile number'); return }
+      if (!regEmail.includes('@') || !regEmail.includes('.') || regEmail.indexOf('@') < 1 || regEmail.lastIndexOf('.') < regEmail.indexOf('@') + 2) { setRegErr('Invalid email address'); return }
+      if (regPhone.length < 4 || regPhone.length > 15) { setRegErr('Enter a valid phone number'); return }
       if (regPwd.length < 6) { setRegErr('Password must be at least 6 characters'); return }
       // Store user in localStorage (wire to real DB later)
       const users = JSON.parse(localStorage.getItem('ns_users') || '[]')
