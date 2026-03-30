@@ -17,6 +17,15 @@ const C = {
   lgrey: '#aaaaaa',
 }
 
+const TABS = [
+  { id: 'miro', label: 'Miro' },
+  { id: 'trend', label: 'Trend' },
+  { id: 'reversion', label: 'Reversion' },
+  { id: 'weekly', label: 'Weekly' },
+  { id: 'filing', label: 'AI Lab' },
+  { id: 'intelligence', label: 'AI Debate' },
+]
+
 // --- 2. SHARED UI COMPONENTS ---
 const TH = ({ children }: { children: React.ReactNode }) => (
   <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: 10, color: C.orange, borderBottom: '1px solid #222', textTransform: 'uppercase', letterSpacing: 1 }}>{children}</th>
@@ -77,7 +86,7 @@ export default function Dashboard() {
             const d = JSON.parse(line.slice(6));
             if (d.type === 'progress') setProgress({ done: d.done, total: d.total })
             if (d.type === 'complete') { setResult(d.result); setScanning(false); }
-          } catch (e) { /* partial chunk skip */ }
+          } catch (e) { }
         }
       }
     } catch (e) { setScanning(false) }
@@ -105,18 +114,18 @@ export default function Dashboard() {
         for (const line of lines) {
           const json = line.slice(6).trim();
           if (json === '[DONE]') break;
-          try { setAiContent(p => p + JSON.parse(json).text); } catch (e) {}
+          try { setAiContent(p => p + JSON.parse(json).text); } catch (e) { }
         }
       }
-    } catch (e) {} finally { setAiStreaming(false) }
+    } catch (e) { } finally { setAiStreaming(false) }
   }
 
-  // --- 5. RENDERER (THE LOGIC CORE) ---
+  // --- 5. RENDERER ---
   const renderTabContent = () => {
     if (!result) return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
         <div style={{ fontSize: 32, marginBottom: 10 }}>🏹</div>
-        <div style={{ fontSize: 12, letterSpacing: 2 }}>{scanning ? `SCANNING ${universe} (${progress.done}/${progress.total})` : "TERMINAL STANDBY // PRESS START SCAN"}</div>
+        <div style={{ fontSize: 11, letterSpacing: 2 }}>{scanning ? `SCANNING ${universe} (${progress.done}/${progress.total})` : "TERMINAL STANDBY // PRESS START SCAN"}</div>
       </div>
     );
 
@@ -133,8 +142,8 @@ export default function Dashboard() {
               <tbody>
                 {miroSorted.map((s, i) => (
                   <tr key={s.ticker}>
-                    <TD col="#444">{i+1}</TD>
-                    <TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+                    <TD col="#444">{i + 1}</TD>
+                    <TD col={C.amber} bold>{s.ticker.replace('.NS', '')}</TD>
                     <TD col={s.miroScore >= 8 ? C.green : C.white} bold>{s.miroScore}/10</TD>
                     <TD col={s.volSurge >= 2 ? C.green : C.lgrey}>{s.volSurge.toFixed(2)}x</TD>
                     <TD col={C.white}>₹{s.price.toLocaleString('en-IN')}</TD>
@@ -157,7 +166,7 @@ export default function Dashboard() {
               <tbody>
                 {trendSorted.map(s => (
                   <tr key={s.ticker}>
-                    <TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+                    <TD col={C.amber} bold>{s.ticker.replace('.NS', '')}</TD>
                     <TD col={s.adxStrength > 25 ? C.green : C.white}>{s.adxStrength.toFixed(1)}</TD>
                     <TD>₹{s.ma20.toFixed(1)}</TD>
                     <TD col={s.price > s.ma50 ? C.green : C.red}>₹{s.ma50.toFixed(1)}</TD>
@@ -180,7 +189,7 @@ export default function Dashboard() {
               <tbody>
                 {zSorted.filter(s => Math.abs(s.zScore) > 1.2).map(s => (
                   <tr key={s.ticker}>
-                    <TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+                    <TD col={C.amber} bold>{s.ticker.replace('.NS', '')}</TD>
                     <TD col={s.zScore <= -2 ? C.green : s.zScore >= 2 ? C.red : C.white} bold>{s.zScore.toFixed(2)}</TD>
                     <TD>₹{s.atr.toFixed(2)}</TD>
                     <TD col={C.white}>₹{s.price.toFixed(2)}</TD>
@@ -196,7 +205,7 @@ export default function Dashboard() {
         const weekSorted = stocks.sort((a, b) => b.volSurge - a.volSurge);
         return (
           <div key="weekly-view" style={{ flex: 1, overflow: 'auto' }}>
-            <PH title="WEEKLY INSTITUTIONAL FLOW" sub="Silient Accumulation & Distribution Scans" />
+            <PH title="WEEKLY INSTITUTIONAL FLOW" sub="Silent Accumulation & Distribution Scans" />
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr><TH>Ticker</TH><TH>Vol Surge</TH><TH>Price Move</TH><TH>Pattern</TH></tr></thead>
               <tbody>
@@ -204,7 +213,7 @@ export default function Dashboard() {
                   const accum = s.volSurge >= 3 && Math.abs(s.pctChange) < 1.5;
                   return (
                     <tr key={s.ticker}>
-                      <TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+                      <TD col={C.amber} bold>{s.ticker.replace('.NS', '')}</TD>
                       <TD col={s.volSurge > 3 ? C.green : C.white}>{s.volSurge.toFixed(2)}x</TD>
                       <TD col={s.pctChange >= 0 ? C.green : C.red}>{s.pctChange.toFixed(2)}%</TD>
                       <TD col={accum ? C.green : C.lgrey}>{accum ? 'ACCUMULATION' : 'NORMAL'}</TD>
@@ -223,14 +232,14 @@ export default function Dashboard() {
           <div key="ai-view" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#050505' }}>
             <PH title={mode === 'filing' ? 'AI LAB - SEBI FILING AUDIT' : 'AI DEBATE - INVESTMENT COUNCIL'} sub={`Neural Processing for ${aiTicker}`} />
             <div style={{ padding: '10px 15px', borderBottom: '1px solid #222', display: 'flex', gap: 10, background: '#0a0a0a' }}>
-              <select value={aiTicker} onChange={e => {setAiTicker(e.target.value); setAiContent('')}} style={{ background: '#000', color: C.orange, border: '1px solid #444', padding: '5px 10px', fontSize: 11 }}>
-                {result.stocks.map(s => <option key={s.ticker} value={s.ticker}>{s.ticker.replace('.NS','')}</option>)}
+              <select value={aiTicker} onChange={e => { setAiTicker(e.target.value); setAiContent('') }} style={{ background: '#000', color: C.orange, border: '1px solid #444', padding: '5px 10px', fontSize: 11 }}>
+                {result.stocks.map(s => <option key={s.ticker} value={s.ticker}>{s.ticker.replace('.NS', '')}</option>)}
               </select>
               <button onClick={() => runAI(mode)} style={{ background: C.orange, color: '#000', border: 'none', padding: '5px 15px', fontWeight: 900, cursor: 'pointer', fontSize: 11 }}>
                 {aiStreaming ? 'STOPPING...' : 'EXECUTE AI AUDIT'}
               </button>
             </div>
-            <div style={{ flex: 1, padding: 25, overflowY: 'auto', whiteSpace: 'pre-wrap', color: '#ccc', fontSize: 13, lineHeight: 1.8 }}>
+            <div style={{ flex: 1, padding: 20, overflowY: 'auto', whiteSpace: 'pre-wrap', color: '#ccc', fontSize: 13, lineHeight: 1.8 }}>
               {aiContent || (aiStreaming ? "Initializing Neural Core..." : "Select ticker and press Execute.")}
               {aiStreaming && <span style={{ color: C.orange }}> ▊</span>}
             </div>
@@ -242,10 +251,10 @@ export default function Dashboard() {
     }
   };
 
-  // --- 6. FINAL JSX LAYOUT ---
+  // --- 6. FINAL JSX ---
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#000', color: '#fff', fontFamily: 'monospace', overflow: 'hidden' }}>
-      
+
       {/* HEADER */}
       <div style={{ height: 45, background: C.orange, display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between', flexShrink: 0 }}>
         <b style={{ color: '#000', fontSize: 18, letterSpacing: 3 }}>NIFTY 500 SNIPER</b>
@@ -262,7 +271,7 @@ export default function Dashboard() {
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
             padding: '12px 24px', background: activeTab === t.id ? '#1a1a1a' : 'transparent',
-            color: activeTab === id ? C.orange : '#666', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11,
+            color: activeTab === t.id ? C.orange : '#666', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11,
             borderBottom: activeTab === t.id ? `3px solid ${C.orange}` : 'none'
           }}>{t.label.toUpperCase()}</button>
         ))}
@@ -286,7 +295,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* MAIN PANEL CONTENT */}
+        {/* CONTENT */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {renderTabContent()}
         </div>
