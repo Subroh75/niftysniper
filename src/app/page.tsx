@@ -21,31 +21,23 @@ const C = {
 
 
 const TABS = [
-
   { id: 'miro',         label: 'Miro'      },
-
-  { id: 'trend',        label: 'Trend'     },
-
-  { id: 'reversion',   label: 'Reversion' },
-
+  { id: 'momentum',     label: 'Momentum'  },
+  { id: 'lowvol',       label: 'Low-Vol'   },
+  { id: 'macd',         label: 'MA Cross'  },
+  { id: 'multifactor',  label: 'Alpha'     },
+  { id: 'reversion',    label: 'Reversion' },
   { id: 'weekly',       label: 'Weekly'    },
-
   { id: 'filing',       label: 'AI Lab'    },
-
   { id: 'intelligence', label: 'AI Debate' },
-
 ]
 
 
 
 const UNIVERSES = [
-
-  { value: 'NIFTY50'  as Universe, label: 'NIFTY 50',  sub: '~1 MIN', tier: 'free' },
-
-  { value: 'NIFTY200' as Universe, label: 'NIFTY 200', sub: '~4 MIN', tier: 'pro'  },
-
-  { value: 'NIFTY500' as Universe, label: 'NIFTY 500', sub: '~8 MIN', tier: 'pro'  },
-
+  { value: 'NIFTY50'  as Universe, label: 'NIFTY 50',  sub: '~1 MIN' },
+  { value: 'NIFTY200' as Universe, label: 'NIFTY 200', sub: '~4 MIN' },
+  { value: 'NIFTY500' as Universe, label: 'NIFTY 500', sub: '~8 MIN' },
 ]
 
 
@@ -522,6 +514,147 @@ function AIPanel({ tickers, pulse, mode }: { tickers: string[]; pulse: ScanResul
 
 // ─── MAIN DASHBOARD ───────────────────────────────────────────────────────────
 
+
+// ─── STRATEGY TABLES (from Kakushadze & Serur "151 Trading Strategies") ──────
+
+function MomentumTable({ stocks }: { stocks: ScanResult['stocks'] }) {
+  const sorted = [...stocks].sort((a, b) => b.pctChange - a.pctChange)
+  const n = sorted.length
+  return (
+    <div style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11, fontFamily:'monospace' }}>
+        <thead><tr style={{ borderBottom:'1px solid '+C.orange, background:'#0d0d00' }}>
+          <TH>#</TH><TH>TICKER</TH><TH>SECTOR</TH><TH>PRICE</TH><TH>MOM%</TH><TH>MIRO</TH><TH>SURGE</TH><TH>DECILE</TH><TH>SIGNAL</TH><TH>S/L</TH>
+        </tr></thead>
+        <tbody>{sorted.map((s, i) => {
+          const d = Math.ceil(((i+1)/n)*10)
+          const sig = d<=2?'BUY WINNER':d>=9?'AVOID LOSER':'HOLD'
+          const col = d<=2?C.green:d>=9?C.red:C.grey
+          return (<Row key={s.ticker} i={i}>
+            <TD col="#444">{i+1}</TD><TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+            <td style={{padding:'3px 8px',color:C.grey,maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.sector}</td>
+            <TD col={C.white}>₹{s.price.toLocaleString('en-IN',{maximumFractionDigits:2})}</TD>
+            <td style={{padding:'3px 8px',color:s.pctChange>=0?C.green:C.red,fontWeight:700,fontSize:13}}>{s.pctChange>=0?'+':''}{s.pctChange.toFixed(2)}%</td>
+            <TD col={s.miroScore>=8?C.green:s.miroScore>=5?C.amber:C.grey} bold>{s.miroScore}</TD>
+            <TD col={s.volSurge>=2?C.green:C.grey}>{s.volSurge.toFixed(2)}x</TD>
+            <td style={{padding:'3px 8px',color:d<=2?C.green:d>=9?C.red:C.grey,fontWeight:700}}>D{d}</td>
+            <TD col={col} bold>{sig}</TD>
+            <TD>{s.stopLoss?'₹'+s.stopLoss.toFixed(2):'—'}</TD>
+          </Row>)
+        })}</tbody>
+      </table>
+    </div>
+  )
+}
+
+function LowVolTable({ stocks }: { stocks: ScanResult['stocks'] }) {
+  const sorted = [...stocks].sort((a,b) => (a.atr/Math.max(a.price,1)) - (b.atr/Math.max(b.price,1)))
+  const n = sorted.length
+  return (
+    <div style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11, fontFamily:'monospace' }}>
+        <thead><tr style={{ borderBottom:'1px solid '+C.orange, background:'#0d0d00' }}>
+          <TH>#</TH><TH>TICKER</TH><TH>SECTOR</TH><TH>PRICE</TH><TH>ATR</TH><TH>ATR%</TH><TH>VOL DECILE</TH><TH>SIGNAL</TH><TH>MIRO</TH><TH>S/L</TH><TH>QTY</TH>
+        </tr></thead>
+        <tbody>{sorted.map((s,i) => {
+          const atrPct = s.price>0?(s.atr/s.price*100):0
+          const d = Math.ceil(((i+1)/n)*10)
+          const sig = d<=2?'LOW-VOL BUY':d>=9?'HIGH-VOL AVOID':'NEUTRAL'
+          const col = d<=2?C.green:d>=9?C.red:C.grey
+          return (<Row key={s.ticker} i={i}>
+            <TD col="#444">{i+1}</TD><TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+            <td style={{padding:'3px 8px',color:C.grey,maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.sector}</td>
+            <TD col={C.white}>₹{s.price.toLocaleString('en-IN',{maximumFractionDigits:2})}</TD>
+            <TD>₹{s.atr.toFixed(2)}</TD>
+            <td style={{padding:'3px 8px',color:atrPct<1.5?C.green:atrPct>3?C.red:C.amber,fontWeight:700,fontSize:13}}>{atrPct.toFixed(2)}%</td>
+            <td style={{padding:'3px 8px',color:d<=2?C.green:d>=9?C.red:C.grey,fontWeight:700}}>D{d}</td>
+            <TD col={col} bold>{sig}</TD>
+            <TD col={s.miroScore>=8?C.green:s.miroScore>=5?C.amber:C.grey} bold>{s.miroScore}</TD>
+            <TD>{s.stopLoss?'₹'+s.stopLoss.toFixed(2):'—'}</TD>
+            <TD>{s.qty??'—'}</TD>
+          </Row>)
+        })}</tbody>
+      </table>
+    </div>
+  )
+}
+
+function MACrossTable({ stocks }: { stocks: ScanResult['stocks'] }) {
+  const withSig = stocks.map(s => {
+    const golden = s.ma20>s.ma50 && s.ma50>s.ma200
+    const death  = s.ma20<s.ma50
+    const bull   = s.price>s.ma20
+    const signal = golden?'GOLDEN CROSS':death?'DEATH CROSS':bull?'ABOVE MA20':'BELOW MA20'
+    const rank   = golden?4:bull?3:death?1:2
+    const col    = golden?C.green:death?C.red:bull?C.amber:C.grey
+    return { ...s, signal, rank, col }
+  }).sort((a,b)=>b.rank-a.rank)
+  return (
+    <div style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11, fontFamily:'monospace' }}>
+        <thead><tr style={{ borderBottom:'1px solid '+C.orange, background:'#0d0d00' }}>
+          <TH>#</TH><TH>TICKER</TH><TH>SECTOR</TH><TH>PRICE</TH><TH>MA20</TH><TH>MA50</TH><TH>MA200</TH><TH>SIGNAL</TH><TH>ADX</TH><TH>CHG%</TH><TH>S/L</TH>
+        </tr></thead>
+        <tbody>{withSig.map((s,i) => (
+          <Row key={s.ticker} i={i}>
+            <TD col="#444">{i+1}</TD><TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+            <td style={{padding:'3px 8px',color:C.grey,maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.sector}</td>
+            <TD col={C.white}>₹{s.price.toLocaleString('en-IN',{maximumFractionDigits:2})}</TD>
+            <TD col={s.price>s.ma20?C.green:C.red}>₹{s.ma20.toFixed(1)}</TD>
+            <TD col={s.price>s.ma50?C.green:C.red}>₹{s.ma50.toFixed(1)}</TD>
+            <TD col={s.price>s.ma200?C.green:C.red}>₹{s.ma200.toFixed(1)}</TD>
+            <TD col={s.col} bold>{s.signal}</TD>
+            <TD col={s.adxStrength>25?C.green:C.grey}>{s.adxStrength.toFixed(1)}</TD>
+            <TD col={s.pctChange>=0?C.green:C.red}>{s.pctChange>=0?'+':''}{s.pctChange.toFixed(2)}%</TD>
+            <TD>{s.stopLoss?'₹'+s.stopLoss.toFixed(2):'—'}</TD>
+          </Row>
+        ))}</tbody>
+      </table>
+    </div>
+  )
+}
+
+function MultifactorTable({ stocks }: { stocks: ScanResult['stocks'] }) {
+  const n = stocks.length
+  const rank = (arr: ScanResult['stocks'], key: keyof ScanResult['stocks'][0], asc=false) => {
+    const s = [...arr].sort((a,b)=> asc ? (a[key] as number)-(b[key] as number) : (b[key] as number)-(a[key] as number))
+    const m: Record<string,number> = {}; s.forEach((x,i)=>{ m[x.ticker]=n-i }); return m
+  }
+  const momR  = rank(stocks,'pctChange')
+  const volR  = rank(stocks,'atr',true)
+  const miroR = rank(stocks,'miroScore')
+  const zR    = rank(stocks,'zScore',true)
+  const scored = stocks.map(s => ({
+    ...s,
+    alpha: Math.round((momR[s.ticker]||0)*0.30+(volR[s.ticker]||0)*0.25+(miroR[s.ticker]||0)*0.30+(zR[s.ticker]||0)*0.15),
+    mR: momR[s.ticker]||0, vR: volR[s.ticker]||0, miR: miroR[s.ticker]||0,
+  })).sort((a,b)=>b.alpha-a.alpha)
+  return (
+    <div style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11, fontFamily:'monospace' }}>
+        <thead><tr style={{ borderBottom:'1px solid '+C.orange, background:'#0d0d00' }}>
+          <TH>#</TH><TH>TICKER</TH><TH>SECTOR</TH><TH>PRICE</TH><TH>α SCORE</TH><TH>MOM#</TH><TH>VOL#</TH><TH>MIRO#</TH><TH>SIGNAL</TH><TH>S/L</TH><TH>QTY</TH>
+        </tr></thead>
+        <tbody>{scored.map((s,i) => {
+          const d = Math.ceil(((i+1)/n)*10)
+          const sig = d<=2?'STRONG BUY':d>=9?'AVOID':d<=4?'BUY':'NEUTRAL'
+          const col = d<=2?C.green:d>=9?C.red:d<=4?'#00cc66':C.grey
+          return (<Row key={s.ticker} i={i}>
+            <TD col="#444">{i+1}</TD><TD col={C.amber} bold>{s.ticker.replace('.NS','')}</TD>
+            <td style={{padding:'3px 8px',color:C.grey,maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.sector}</td>
+            <TD col={C.white}>₹{s.price.toLocaleString('en-IN',{maximumFractionDigits:2})}</TD>
+            <td style={{padding:'3px 8px',color:d<=2?C.green:d<=4?C.amber:C.grey,fontWeight:900,fontSize:15}}>{s.alpha}</td>
+            <TD col={C.grey}>#{s.mR}</TD><TD col={C.grey}>#{s.vR}</TD><TD col={C.grey}>#{s.miR}</TD>
+            <TD col={col} bold>{sig}</TD>
+            <TD>{s.stopLoss?'₹'+s.stopLoss.toFixed(2):'—'}</TD>
+            <TD>{s.qty??'—'}</TD>
+          </Row>)
+        })}</tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function Dashboard() {
 
   const [activeTab, setActiveTab]     = useState('miro')
@@ -537,6 +670,9 @@ export default function Dashboard() {
   const [result, setResult]           = useState<ScanResult|null>(null)
 
   const [error, setError]             = useState<string|null>(null)
+  const [loggedIn, setLoggedIn]       = useState(false)
+  const [loginPwd, setLoginPwd]       = useState('')
+  const [loginErr, setLoginErr]       = useState(false)
 
   const abortRef = useRef<AbortController|null>(null)
 
@@ -604,7 +740,28 @@ export default function Dashboard() {
 
 
 
-  const pulse      = result?.pulse
+  if (!loggedIn) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#000', flexDirection:'column', gap:24 }}>
+        <div style={{ fontFamily:'monospace', fontSize:26, color:C.orange, fontWeight:900, letterSpacing:5 }}>NIFTYSNIPER</div>
+        <div style={{ fontFamily:'monospace', fontSize:10, color:'#444', letterSpacing:3 }}>INSTITUTIONAL MARKET INTELLIGENCE TERMINAL</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:20, width:300 }}>
+          <input type="password" placeholder="Enter access code" value={loginPwd}
+            onChange={e => { setLoginPwd(e.target.value); setLoginErr(false) }}
+            onKeyDown={e => { if(e.key==='Enter'){ if(loginPwd==='nifty2024') setLoggedIn(true); else setLoginErr(true) }}}
+            style={{ background:'#0a0a0a', border:'1px solid '+(loginErr?C.red:'#333'), color:C.amber, fontFamily:'monospace', fontSize:13, padding:'10px 14px', outline:'none', letterSpacing:2 }} autoFocus />
+          <button onClick={() => { if(loginPwd==='nifty2024') setLoggedIn(true); else setLoginErr(true) }}
+            style={{ background:C.orange, border:'none', color:'#000', fontFamily:'monospace', fontSize:12, fontWeight:900, padding:'10px 0', cursor:'pointer', letterSpacing:3 }}>
+            ACCESS TERMINAL
+          </button>
+          {loginErr && <div style={{ fontFamily:'monospace', fontSize:10, color:C.red, textAlign:'center' }}>INVALID ACCESS CODE</div>}
+        </div>
+        <div style={{ fontFamily:'monospace', fontSize:9, color:'#222', marginTop:40 }}>v1.3 · NSE · YAHOO FINANCE · CLAUDE AI</div>
+      </div>
+    )
+  }
+
+    const pulse      = result?.pulse
 
   const tickers    = result?.stocks.map(s => s.ticker) ?? []
 
@@ -706,40 +863,13 @@ export default function Dashboard() {
 
             <div style={{ fontSize: 9, color: C.orange, letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>SCAN UNIVERSE</div>
 
-            {UNIVERSES.map(u => {
-
-              const isPro = u.tier === 'pro'
-
-              const isActive = universe === u.value
-
-              return (
-
-                <button key={u.value} onClick={() => { if (!isPro) setUniverse(u.value) }} title={isPro ? 'Upgrade to Pro' : ''}
-
-                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', marginBottom: 3, fontFamily: 'monospace', fontSize: 10, cursor: isPro ? 'not-allowed' : 'pointer', border: '1px solid ' + (isActive ? C.orange : isPro ? '#1a1a1a' : '#222'), background: isActive ? '#1a0a00' : isPro ? '#080808' : 'transparent', color: isActive ? C.orange : isPro ? '#333' : C.grey }}>
-
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-
-                    {isPro
-
-                      ? <span style={{ fontSize: 7, color: C.orange, border: '1px solid rgba(255,102,0,0.4)', padding: '0 3px' }}>PRO</span>
-
-                      : <span style={{ fontSize: 7, color: C.green,  border: '1px solid rgba(0,255,65,0.4)',  padding: '0 3px' }}>FREE</span>
-
-                    }
-
-                    {u.label}
-
-                  </span>
-
-                  <span style={{ fontSize: 8, opacity: 0.4 }}>{isPro ? '🔒' : u.sub}</span>
-
-                </button>
-
-              )
-
-            })}
-
+            {UNIVERSES.map(u => (
+              <button key={u.value} onClick={() => setUniverse(u.value)}
+                style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 8px', marginBottom:3, fontFamily:'monospace', fontSize:10, cursor:'pointer', border:'1px solid '+(universe===u.value?C.orange:'#222'), background:universe===u.value?'#1a0a00':'transparent', color:universe===u.value?C.orange:C.grey }}>
+                <span>{u.label}</span>
+                <span style={{ fontSize:8, opacity:0.5 }}>{u.sub}</span>
+              </button>
+            ))}
           </div>
 
           <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a1a' }}>
@@ -872,6 +1002,10 @@ export default function Dashboard() {
 
               {activeTab === 'weekly'       && <><PH title="WEEKLY INSTITUTIONAL FLOW" sub="Vol Surge ≥3x + Price Move <1.5% = silent institutional ACCUMULATION" /><WeeklyTable stocks={result.stocks} /></>}
 
+              {activeTab === 'momentum'    && <><PH title="PRICE MOMENTUM — 12M RETURN RANKING" sub="Kakushadze §3.1 — Buy top-decile winners, avoid bottom-decile losers | Momentum persists 1-12 months" /><MomentumTable stocks={result.stocks} /></>}
+              {activeTab === 'lowvol'       && <><PH title="LOW-VOLATILITY ANOMALY — QUIET STOCKS OUTPERFORM" sub="Kakushadze §3.4 — Low ATR% stocks beat high-volatility peers on risk-adjusted basis | Sort by ATR%" /><LowVolTable stocks={result.stocks} /></>}
+              {activeTab === 'macd'         && <><PH title="MOVING AVERAGE CROSSOVER — GOLDEN vs DEATH CROSS" sub="Kakushadze §3.12 — MA20 > MA50 > MA200 = Golden Cross bullish | MA20 < MA50 = Death Cross warning" /><MACrossTable stocks={result.stocks} /></>}
+              {activeTab === 'multifactor'  && <><PH title="ALPHA COMBOS — MULTIFACTOR COMPOSITE SCORE" sub="Kakushadze §3.6 — Momentum 30% + Low-Vol 25% + Miro 30% + Mean-Reversion 15% | Top decile = buy signal" /><MultifactorTable stocks={result.stocks} /></>}
               {activeTab === 'filing'       && <AIPanel tickers={tickers} pulse={result.pulse} mode="filing" />}
 
               {activeTab === 'intelligence' && <AIPanel tickers={tickers} pulse={result.pulse} mode="debate" />}
